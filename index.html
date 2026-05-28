@@ -57,6 +57,10 @@
     img {
       display: block;
       max-width: 100%;
+      -webkit-user-drag: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
     button,
@@ -2568,6 +2572,37 @@
       font-size: 15px;
     }
 
+    .resume-static-preview {
+      width: 100%;
+      display: grid;
+      gap: 24px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .resume-page {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 920px;
+      border: 1px solid rgba(216, 214, 208, 0.86);
+      background: var(--white);
+      box-shadow: 0 10px 28px rgba(11, 31, 58, 0.06);
+      overflow: hidden;
+    }
+
+    .resume-page img {
+      display: block;
+      width: 100%;
+      height: auto;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
+      -webkit-touch-callout: none;
+      pointer-events: auto;
+    }
+
     .back-to-top {
       position: fixed;
       right: 28px;
@@ -3087,6 +3122,15 @@
         min-height: 520px;
         height: 70vh;
       }
+
+      .resume-static-preview {
+        padding: 12px;
+        gap: 16px;
+      }
+
+      .resume-page {
+        max-width: 100%;
+      }
     }
 
     @media (max-width: 560px) {
@@ -3567,6 +3611,10 @@
       resume: "完整版王泽浩简历.PDF",
       portrait: "2.个人照片.PNG"
     };
+
+    const resumePages = [
+      "assets/resume-pages/resume-page-01.png"
+    ];
 
     function getResumeSrc() {
       return encodeURI("./" + profile.resume);
@@ -4776,6 +4824,7 @@
           </div>
         </a>
       `).join("");
+      protectImages(grid);
     }
 
     function renderPoliticalCards() {
@@ -4810,10 +4859,12 @@
           </div>
         </a>
       `).join("");
+      protectImages(grid);
     }
 
     function renderResumeDetail(data) {
       const resumeSrc = getResumeSrc();
+      // iOS Safari may open the PDF instead of forcing download; keep native anchor behavior.
 
       detailView.innerHTML = `
         <div class="detail-shell resume-detail-shell">
@@ -4852,17 +4903,18 @@
               <a class="btn btn-secondary" href="${escapeHtml(resumeSrc)}" target="_blank" rel="noopener">在新窗口打开</a>
             </div>
 
-            <div class="resume-frame-wrap" id="resumeFrameWrap">
-              <iframe
-                class="resume-frame"
-                id="resumePdfFrame"
-                title="王泽浩完整版个人简历"
-                src="about:blank"
-                data-src="${escapeHtml(resumeSrc)}"
-              ></iframe>
-              <p class="resume-fallback" id="resumePdfFallback" hidden>
-                PDF 无法在当前浏览器中预览。请点击上方按钮下载或在新窗口打开完整版简历。
-              </p>
+            <div class="resume-static-preview" aria-label="完整版个人简历预览">
+              ${resumePages.map((src, index) => `
+                <figure class="resume-page">
+                  <img
+                    src="${escapeHtml(src)}"
+                    alt="王泽浩完整版个人简历 第 ${index + 1} 页"
+                    loading="${index === 0 ? "eager" : "lazy"}"
+                    decoding="async"
+                    draggable="false"
+                  >
+                </figure>
+              `).join("")}
             </div>
           </section>
         </div>
@@ -4878,30 +4930,8 @@
         showHome(target);
       });
 
-      const resumeFrame = detailView.querySelector("#resumePdfFrame");
-      const resumeFallback = detailView.querySelector("#resumePdfFallback");
-      if (resumeFrame && resumeFallback) {
-        resumeFrame.addEventListener("error", () => {
-          resumeFallback.hidden = false;
-        }, { once: true });
-      }
-
+      protectImages(detailView);
       prepareReveals(detailView);
-    }
-
-    function mountResumePdfPreview() {
-      const frame = detailView.querySelector("#resumePdfFrame");
-      if (!frame) return;
-
-      const src = frame.getAttribute("data-src");
-      if (!src) return;
-      if (frame.getAttribute("src") === src) return;
-
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          frame.setAttribute("src", src);
-        });
-      });
     }
 
     function renderPublicationImage(src, title, kicker, ratio) {
@@ -5033,6 +5063,7 @@
       });
 
       imageLightboxState.element = lightbox;
+      protectImages(lightbox);
       return lightbox;
     }
 
@@ -5045,7 +5076,9 @@
       const counter = lightbox.querySelector(".image-lightbox__counter");
       image.src = current.src;
       image.alt = current.title;
+      image.setAttribute("draggable", "false");
       counter.textContent = `${imageLightboxState.activeIndex + 1}/${imageLightboxState.images.length}`;
+      protectImages(lightbox);
     }
 
     function openImageLightbox(images, index) {
@@ -5310,6 +5343,7 @@
       bindImageFallbacks(detailView);
       bindBookCoverLightbox({ src: book.cover, title: coverTitle });
       if (hasCalligraphy) bindCalligraphyLightbox(calligraphyImages);
+      protectImages(detailView);
     }
 
     function renderPassageDetail(data) {
@@ -5382,6 +5416,7 @@
       });
       if (isLimitedScale) bindLimitedScaleExcerptToggles();
       bindPassageTocFollow();
+      protectImages(detailView);
     }
 
     function renderLimitedPassageBlock(item, id) {
@@ -5677,6 +5712,7 @@
         });
       });
       bindImageFallbacks(detailView);
+      protectImages(detailView);
       prepareReveals(detailView);
     }
 
@@ -5780,10 +5816,6 @@
       const detailScrollTarget = options.detailScrollTarget || null;
 
       requestAnimationFrame(() => {
-        if (key === "resume") {
-          mountResumePdfPreview();
-        }
-
         if (detailScrollTarget) {
           const target = detailView.querySelector(detailScrollTarget);
           if (target) {
@@ -5877,6 +5909,17 @@
       });
     }
 
+    function protectImages(root = document) {
+      root.querySelectorAll("img").forEach(img => {
+        img.setAttribute("draggable", "false");
+        if (img.dataset.protectedImage === "true") return;
+        img.dataset.protectedImage = "true";
+        img.addEventListener("dragstart", event => {
+          event.preventDefault();
+        });
+      });
+    }
+
     function closeMenu() {
       menuToggle.classList.remove("is-open");
       siteNav.classList.remove("is-open");
@@ -5922,6 +5965,30 @@
       navigateToDetail(key);
     });
 
+    document.addEventListener("contextmenu", event => {
+      if (event.target && event.target.closest && event.target.closest("img")) {
+        event.preventDefault();
+      }
+    });
+
+    document.addEventListener("dragstart", event => {
+      if (event.target && event.target.closest && event.target.closest("img")) {
+        event.preventDefault();
+      }
+    });
+
+    document.addEventListener("selectstart", event => {
+      if (event.target && event.target.closest && event.target.closest("img")) {
+        event.preventDefault();
+      }
+    });
+
+    document.addEventListener("touchstart", event => {
+      if (event.target && event.target.closest && event.target.closest("img")) {
+        event.target.closest("img").setAttribute("draggable", "false");
+      }
+    }, { passive: true });
+
     backToTop.addEventListener("click", () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -5962,6 +6029,7 @@
     renderExperienceCards();
     renderPoliticalCards();
     bindImageFallbacks(document);
+    protectImages(document);
     prepareReveals(document);
     updateChrome();
     handleRoute();
